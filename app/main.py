@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 from app.database import competitors_col, history_col
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -10,7 +10,7 @@ app = FastAPI(
 )
 
 # --------------------------------------------------
-# ROOT / HEALTH CHECK
+# ROOT / HEALTH
 # --------------------------------------------------
 @app.get("/")
 def root():
@@ -22,7 +22,7 @@ def root():
     }
 
 @app.get("/health")
-def health_check():
+def health():
     return {
         "status": "ok",
         "service": "ai_competitor_analysis",
@@ -30,11 +30,11 @@ def health_check():
     }
 
 # --------------------------------------------------
-# COMPETITORS (MAIN DATA)
+# COMPETITORS
 # --------------------------------------------------
 @app.get("/api/competitors")
 def get_all_competitors(
-    search: Optional[str] = Query(None, description="Search by name"),
+    search: Optional[str] = Query(None),
     limit: int = 50,
     skip: int = 0
 ):
@@ -58,7 +58,7 @@ def get_all_competitors(
     }
 
 @app.get("/api/competitors/{name}")
-def get_competitor_detail(name: str):
+def get_competitor(name: str):
     competitor = competitors_col.find_one(
         {"name": name},
         {"_id": 0}
@@ -70,7 +70,7 @@ def get_competitor_detail(name: str):
     return {"success": True, "data": competitor}
 
 # --------------------------------------------------
-# DROPDOWN / LIGHTWEIGHT ROUTES
+# DROPDOWN / LIGHTWEIGHT
 # --------------------------------------------------
 @app.get("/api/tools")
 def get_tool_names():
@@ -90,7 +90,7 @@ def get_categories():
     }
 
 @app.get("/api/pricing-models")
-def get_pricing_models():
+def pricing_models():
     pricing = competitors_col.distinct("pricingModel")
     return {
         "success": True,
@@ -98,7 +98,7 @@ def get_pricing_models():
     }
 
 # --------------------------------------------------
-# HISTORY / CHART DATA
+# HISTORY / TRENDS
 # --------------------------------------------------
 @app.get("/api/history/{name}")
 def get_history(name: str):
@@ -110,42 +110,102 @@ def get_history(name: str):
     }
 
 @app.get("/api/history/latest/{name}")
-def get_latest_history(name: str):
+def latest_history(name: str):
     data = history_col.find_one(
         {"name": name},
-        sort=[("updatedAt", -1)],
+        sort=[("timestamp", -1)],
         projection={"_id": 0}
     )
     return {"success": True, "data": data}
 
+@app.get("/api/trends/ai-score/{name}")
+def ai_score_trend(name: str):
+    trend = list(
+        history_col.find(
+            {"name": name},
+            {"_id": 0, "timestamp": 1, "aiScore": 1}
+        ).sort("timestamp", 1)
+    )
+
+    return {
+        "success": True,
+        "count": len(trend),
+        "trend": trend
+    }
+
 # --------------------------------------------------
-# COMPARISON (SIDE-BY-SIDE)
+# COMPARE
 # --------------------------------------------------
 @app.post("/api/compare")
-def compare_tools(names: List[str]):
+def compare_tools(names: List[str] = Body(..., example=["ChatGPT", "GitHub Copilot"])):
     data = list(
         competitors_col.find(
             {"name": {"$in": names}},
             {"_id": 0}
         )
     )
+
     return {
         "success": True,
         "count": len(data),
         "results": data
     }
 
+@app.post("/api/compare/summary")
+def compare_summary(names: List[str] = Body(...)):
+    data = list(
+        competitors_col.find(
+            {"name": {"$in": names}},
+            {"_id": 0, "name": 1, "aiScore": 1, "category": 1, "pricingModel": 1}
+        )
+    )
+
+    winner = max(data, key=lambda x: x.get("aiScore", 0))["name"] if data else None
+
+    return {
+        "success": True,
+        "winner": winner,
+        "results": data
+    }
+
 # --------------------------------------------------
-# INSIGHTS / STATS (DASHBOARD)
+# SWOT & STRATEGY
+# --------------------------------------------------
+@app.get("/api/swot/{name}")
+def get_swot(name: str):
+    data = competitors_col.find_one(
+        {"name": name},
+        {"_id": 0, "swot": 1}
+    )
+
+    if not data:
+        return {"success": False, "message": "Not found"}
+
+    return {"success": True, "swot": data.get("swot")}
+
+@app.get("/api/strategy/{name}")
+def get_strategy(name: str):
+    data = competitors_col.find_one(
+        {"name": name},
+        {"_id": 0, "marketingStrategy": 1}
+    )
+
+    if not data:
+        return {"success": False, "message": "Not found"}
+
+    return {"success": True, "strategy": data.get("marketingStrategy")}
+
+# --------------------------------------------------
+# STATS / DASHBOARD
 # --------------------------------------------------
 @app.get("/api/stats/overview")
-def overview_stats():
-    total_tools = competitors_col.count_documents({})
+def overview():
+    total = competitors_col.count_documents({})
     categories = competitors_col.distinct("category")
 
     return {
         "success": True,
-        "totalTools": total_tools,
+        "totalTools": total,
         "totalCategories": len(categories),
         "categories": categories
     }
@@ -157,19 +217,34 @@ def top_tools(limit: int = 5):
         .sort("aiScore", -1)
         .limit(limit)
     )
+
+    return {"success": True, "results": data}
+
+@app.get("/api/leaderboard")
+def leaderboard(limit: int = 10):
+    data = list(
+        competitors_col.find(
+            {},
+            {"_id": 0, "name": 1, "aiScore": 1, "category": 1}
+        )
+        .sort("aiScore", -1)
+        .limit(limit)
+    )
+
     return {"success": True, "results": data}
 
 # --------------------------------------------------
-# SEARCH & FILTER
+# SEARCH
 # --------------------------------------------------
 @app.get("/api/search")
-def global_search(q: str):
+def search(q: str):
     data = list(
         competitors_col.find(
             {"name": {"$regex": q, "$options": "i"}},
             {"_id": 0}
         )
     )
+
     return {
         "success": True,
         "count": len(data),
@@ -177,10 +252,10 @@ def global_search(q: str):
     }
 
 # --------------------------------------------------
-# METADATA FOR FRONTEND
+# FRONTEND META
 # --------------------------------------------------
 @app.get("/api/meta")
-def frontend_meta():
+def meta():
     return {
         "success": True,
         "appName": "AI Competitor Intelligence",
@@ -188,7 +263,9 @@ def frontend_meta():
         "features": [
             "Competitor Analysis",
             "AI Scoring",
+            "SWOT Analysis",
+            "Strategy Detection",
             "Trend Tracking",
-            "Tool Comparison"
+            "Comparison"
         ]
     }
