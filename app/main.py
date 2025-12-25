@@ -48,6 +48,7 @@ def get_competitor(name: str):
         {"name": name},
         {"_id": 0}
     )
+
     if not competitor:
         return {
             "success": False,
