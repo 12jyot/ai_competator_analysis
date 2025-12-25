@@ -14,12 +14,97 @@ app = FastAPI(
 # --------------------------------------------------
 @app.get("/")
 def root():
+    from fastapi import FastAPI
+from datetime import datetime, timezone
+
+app = FastAPI(
+    title="AI Competitive Intelligence",
+    description="AI-driven competitor analysis backend for AI tools",
+    version="1.0.0"
+)
+
+@app.get("/")
+def api_index():
     return {
         "success": True,
-        "message": "AI Competitive Intelligence API is running",
+        "service": "AI Competitive Intelligence API",
+        "version": "1.0.0",
+        "status": "running",
         "timestamp": datetime.now(timezone.utc),
-        "docs": "/docs"
+        "routes": {
+            "health": {
+                "method": "GET",
+                "path": "/health",
+                "description": "Service health check"
+            },
+            "competitors": {
+                "method": "GET",
+                "path": "/api/competitors",
+                "description": "Get all AI competitors (search, pagination)"
+            },
+            "competitor_detail": {
+                "method": "GET",
+                "path": "/api/competitors/{name}",
+                "description": "Get single competitor details"
+            },
+            "tool_names": {
+                "method": "GET",
+                "path": "/api/tools",
+                "description": "Get all AI tool names (dropdown)"
+            },
+            "categories": {
+                "method": "GET",
+                "path": "/api/categories",
+                "description": "Get all categories"
+            },
+            "pricing_models": {
+                "method": "GET",
+                "path": "/api/pricing-models",
+                "description": "Get pricing models"
+            },
+            "history": {
+                "method": "GET",
+                "path": "/api/history/{name}",
+                "description": "Get historical trend data"
+            },
+            "latest_history": {
+                "method": "GET",
+                "path": "/api/history/latest/{name}",
+                "description": "Get latest snapshot"
+            },
+            "compare": {
+                "method": "POST",
+                "path": "/api/compare",
+                "description": "Compare multiple AI tools"
+            },
+            "stats_overview": {
+                "method": "GET",
+                "path": "/api/stats/overview",
+                "description": "Dashboard overview statistics"
+            },
+            "top_tools": {
+                "method": "GET",
+                "path": "/api/stats/top-tools",
+                "description": "Top AI tools by AI score"
+            },
+            "search": {
+                "method": "GET",
+                "path": "/api/search?q=",
+                "description": "Global search across tools"
+            },
+            "meta": {
+                "method": "GET",
+                "path": "/api/meta",
+                "description": "Frontend metadata"
+            },
+            "docs": {
+                "method": "GET",
+                "path": "/docs",
+                "description": "Swagger API documentation"
+            }
+        }
     }
+
 
 @app.get("/health")
 def health():
