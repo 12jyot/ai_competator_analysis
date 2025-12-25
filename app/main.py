@@ -28,3 +28,12 @@ def get_competitors():
 @app.get("/api/history/{name}")
 def history(name: str):
     return list(history_col.find({"name": name}, {"_id": 0}))
+
+@app.get("/api/tools")
+def get_all_tool_names():
+    names = competitors_col.distinct("name")
+    return {
+        "count": len(names),
+        "tools": sorted(names)
+    }
+
