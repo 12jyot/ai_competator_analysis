@@ -1,6 +1,6 @@
 import os
 from openai import OpenAI
-
+from app.config import OPENAI_API_KEY
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def generate_ai_score(competitor: dict):

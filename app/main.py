@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv() 
 from fastapi import FastAPI, Query, Body
 from app.database import competitors_col, history_col
 from datetime import datetime, timezone
@@ -174,13 +176,19 @@ def get_categories():
         "categories": sorted(categories)
     }
 
-@app.get("/api/pricing-models")
-def pricing_models():
-    pricing = competitors_col.distinct("pricingModel")
+@app.get("/api/pricing")
+def pricing_overview():
+    data = list(
+        competitors_col.find(
+            {},
+            {"_id": 0, "name": 1, "pricing": 1}
+        )
+    )
     return {
         "success": True,
-        "pricingModels": pricing
+        "results": data
     }
+
 
 # --------------------------------------------------
 # HISTORY / TRENDS
