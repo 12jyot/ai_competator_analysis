@@ -176,19 +176,20 @@ def get_categories():
         "categories": sorted(categories)
     }
 
-@app.get("/api/pricing")
-def pricing_overview():
-    data = list(
-        competitors_col.find(
-            {},
-            {"_id": 0, "name": 1, "pricing": 1}
-        )
+@app.get("/api/pricing/{name}")
+def get_pricing(name: str):
+    tool = competitors_col.find_one(
+        {"name": name},
+        {"_id": 0, "pricingData": 1}
     )
+
+    if not tool:
+        return {"success": False, "message": "Tool not found"}
+
     return {
         "success": True,
-        "results": data
+        "pricing": tool.get("pricingData", [])
     }
-
 
 # --------------------------------------------------
 # HISTORY / TRENDS
